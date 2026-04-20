@@ -1,0 +1,1 @@
+Thanks for the heads up about the Proton VPN renewal. I'll switch my seedbox from Anonine to Proton this weekend and update the Gluetun config accordingly.

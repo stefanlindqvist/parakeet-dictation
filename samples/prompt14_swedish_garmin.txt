@@ -1,0 +1,1 @@
+Garmin-klockan laddar inte ordentligt i kylan — kan du kolla om det finns en firmware-uppdatering från förra veckan?

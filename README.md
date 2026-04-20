@@ -29,11 +29,42 @@ pwsh scripts/download_models.ps1
 python -m parakeet_dictation
 ```
 
-Default hotkey is `Win+`` ` `` (configurable in `config.toml`). Hold to record, release to transcribe-and-paste.
+Default hotkey is `Win+`` ` `` (configurable in [config.toml](config.toml)). Hold to record, release to transcribe-and-paste. Startup logs `Ready. Hotkey=<cmd>+` …` once the ASR model has loaded and warmed up — only start dictating after that line.
+
+## First-run smoke test
+
+Open Notepad (or any text field), hold the hotkey, say:
+
+> "Install the Dependabot workflow for the fitnesscoach repo, then configure pgvector with Qdrant as a secondary store."
+
+Expected: every technical term lands correctly either from Parakeet directly or via `vocab_fixups.json`. If not, add a substitution entry and reload the daemon.
 
 ## Configuration
 
-All runtime tuning lives in [config.toml](config.toml) (hotkey mode, audio device, VAD threshold, ASR providers, paste behaviour, log level). Technical-vocabulary fixups — regex substitutions applied post-transcription — live in [vocab_fixups.json](vocab_fixups.json) and are iterative: add entries as you spot mis-transcriptions.
+All runtime tuning lives in [config.toml](config.toml). Keys mirror [AppConfig](src/parakeet_dictation/config.py):
+
+| Section    | Key                    | Meaning                                                                                     |
+|------------|------------------------|---------------------------------------------------------------------------------------------|
+| `hotkey`   | `mode`                 | `hold` (record while held) or `toggle` (tap to start, tap to stop).                         |
+| `hotkey`   | `key`                  | pynput chord notation, e.g. `<cmd>+` `` ` ``, `<ctrl>+<alt>+d`.                             |
+| `audio`    | `sample_rate`          | Fixed at `16000` for Parakeet. Do not change.                                               |
+| `audio`    | `device_index`         | `-1` = default input. Use `python -m sounddevice` to list device indices.                   |
+| `audio`    | `silence_timeout_ms`   | Toggle mode only: auto-stop after this much silence. Ignored in hold mode.                  |
+| `vad`      | `enabled`              | Silero VAD on/off. Off = send the whole buffer to ASR unchanged.                            |
+| `vad`      | `threshold`            | Silero confidence cutoff, 0.0–1.0. Raise if background noise triggers false speech.         |
+| `vad`      | `min_speech_ms`        | Drop speech bursts shorter than this (accidental key taps, throat clears).                  |
+| `asr`      | `model_path`           | Directory with the four ONNX files. Default matches `download_models.ps1` output.           |
+| `asr`      | `language`             | `auto` (Parakeet detects), or ISO code (`en`, `sv`, …) to pin.                              |
+| `asr`      | `encoder_provider`     | `DmlExecutionProvider` (GPU) or `CPUExecutionProvider`.                                     |
+| `asr`      | `decoder_provider`     | `CPUExecutionProvider` is intentional — see handover §3. Don't flip to GPU.                 |
+| `paste`    | `restore_clipboard`    | Snapshot + restore existing clipboard contents around the paste.                            |
+| `paste`    | `restore_delay_ms`     | Wait this long after `Ctrl+V` before restoring, so the target app consumes the paste first. |
+| `logging`  | `level`                | `DEBUG` / `INFO` / `WARNING` / `ERROR`.                                                     |
+| `logging`  | `file`                 | Rotating log file path; rolls at 2 MB, keeps 3 backups.                                     |
+
+Override the config path with `python -m parakeet_dictation --config path/to/other.toml`.
+
+Technical-vocabulary fixups — ordered regex substitutions applied post-transcription — live in [vocab_fixups.json](vocab_fixups.json) and are iterative: add an entry any time you spot a mis-transcription of a name you care about. Longer phrases before shorter ones; left side is Python `re` syntax with word boundaries.
 
 ## Architecture
 
@@ -52,18 +83,57 @@ All runtime tuning lives in [config.toml](config.toml) (hotkey mode, audio devic
 
 Parakeet encoder runs on the GPU (DirectML); decoder runs on the CPU (kernel-launch overhead dominates GPU on the TDT decoder's many small sequential calls). See handover Section 3 for why.
 
+Each transcription emits a single log line with a latency breakdown (`rec / vad / asr / fixup / paste` in ms) — grep it to find slow stages.
+
 ## Troubleshooting
 
-- **DirectML silently falls back to CPU.** `daemon.py` logs the actual execution provider in use at startup. If you see `CPUExecutionProvider` for the encoder, update the NVIDIA GeForce driver and re-check DirectX 12 support.
-- **Hotkey conflicts with a Windows shortcut.** Change `hotkey.key` in `config.toml` (pynput notation, e.g. `"<cmd>+<f12>"`).
-- **Paste arrives mangled in VS Code.** The Claude Code extension sometimes strips newlines from clipboard paste; consider `paste.restore_delay_ms` ≥ 700 ms or fall back to character-by-character `SendInput` (planned — see handover Section 12).
-- **First transcription is slow (2–3 s).** Expected — model warmup runs on startup. The log line `Ready` appears only after warmup completes; start dictating then.
+- **DirectML silently falls back to CPU.** At startup the daemon logs `ASR session <name> providers: […]`. If the encoder session shows only `CPUExecutionProvider`, update the NVIDIA GeForce driver and verify DirectX 12 support (`dxdiag`).
+- **Hotkey conflicts with a Windows shortcut.** Change `hotkey.key` in [config.toml](config.toml). pynput notation: `<cmd>` = Win, `<ctrl>` / `<alt>` / `<shift>`, `<f1>`–`<f24>`, single characters (`` ` ``, `a`, etc.).
+- **Paste arrives mangled in VS Code.** The Claude Code extension occasionally strips newlines from clipboard paste; raise `paste.restore_delay_ms` to ≥ 700 ms. A `SendInput` typing fallback is on the roadmap (handover §12).
+- **First transcription is slow (2–3 s).** Expected — model warmup runs on startup. The `Ready.` log line appears only after warmup completes; start dictating then.
+- **`onnxruntime` conflict.** If you ever see `CUDAExecutionProvider` offered but DirectML missing, you've got a second `onnxruntime-*` wheel installed. `pip uninstall onnxruntime onnxruntime-gpu` and reinstall `onnxruntime-directml`.
+- **Model files missing.** The daemon fails loudly with `ASR model path does not exist …`. Run `pwsh scripts/download_models.ps1` once and retry.
 - **Git Bash `ssh`/`scp` from PowerShell.** When pushing from Claude Code, the Git-bundled `ssh.exe` can't talk to the Windows ssh-agent named pipe. Prepend `C:\Windows\System32\OpenSSH` to `PATH` in PowerShell, or invoke the native `ssh.exe` by full path. Global note in `~/.claude/CLAUDE.md`.
+
+## Benchmarks
+
+Two offline harnesses under [scripts/](scripts/). Both take a directory of 16 kHz mono 16-bit WAV files (`ffmpeg -ar 16000 -ac 1 -sample_fmt s16 in.wav out.wav` converts anything else).
+
+**Latency — handover §9b** ([scripts/bench.py](scripts/bench.py)):
+
+```powershell
+python scripts/bench.py --wav-dir ./samples --runs 5
+```
+
+Runs VAD → ASR → fixups against each WAV, reports per-file p50/p95/p99 plus aggregate stats and a pass/fail verdict for the 500 ms / 15 s-prompt target. Mic capture and paste are intentionally excluded (not deterministic). `--no-vad` and `--no-fixups` toggle stages off for isolating them.
+
+**Accuracy — handover §9c** ([scripts/compare_accuracy.py](scripts/compare_accuracy.py)):
+
+```powershell
+# Minimum: INT8 column only
+python scripts/compare_accuracy.py --wav-dir ./samples --out accuracy.md
+
+# Add FP32 and Whisper large-v3 columns
+pip install faster-whisper
+python scripts/compare_accuracy.py --wav-dir ./samples --out accuracy.md `
+    --fp32-path ./models/parakeet-tdt-0.6b-v3-fp32 --whisper
+```
+
+Runs each WAV through Parakeet INT8 + fixups, optionally Parakeet FP32 + fixups, optionally Whisper large-v3 + technical-vocabulary `initial_prompt`. Writes a markdown table ready for manual error tagging. If a WAV has a sibling `<name>.txt` file, it's included as a `reference` column. `faster-whisper` is *not* a project dependency — install it separately when you want that column.
 
 ## Project layout
 
-See handover Section 5 for the canonical tree. Skeleton modules under [src/parakeet_dictation/](src/parakeet_dictation/) raise `NotImplementedError` today; implement in the order of handover Section 11.
+See handover Section 5 for the canonical tree. All core modules under [src/parakeet_dictation/](src/parakeet_dictation/) are implemented:
+
+- [config.py](src/parakeet_dictation/config.py) — pydantic-settings loader for `config.toml`.
+- [asr.py](src/parakeet_dictation/asr.py) — `onnx-asr` Parakeet wrapper, hybrid GPU/CPU provider split.
+- [fixups.py](src/parakeet_dictation/fixups.py) — ordered regex substitutions from `vocab_fixups.json`.
+- [paste.py](src/parakeet_dictation/paste.py) — Win32 clipboard snapshot/restore + `SendInput` `Ctrl+V`.
+- [audio.py](src/parakeet_dictation/audio.py) — `sounddevice` 16 kHz mono PCM capture.
+- [vad.py](src/parakeet_dictation/vad.py) — Silero VAD (ONNX, CPU) trim / drop.
+- [daemon.py](src/parakeet_dictation/daemon.py) — asyncio main loop, hotkey wiring, latency logging.
+- [__main__.py](src/parakeet_dictation/__main__.py) — CLI entry, logging setup.
 
 ## Status
 
-Scaffold only. No module is implemented yet. Implementation tracked against handover Section 11.
+MVP pipeline complete: record → VAD → Parakeet (DirectML encoder + CPU decoder) → fixups → paste. Benchmark and accuracy comparison harnesses (handover §9b, §9c) in place. Next up: run both against a real sample corpus to validate the <500 ms SLO and decide INT8-vs-FP32, then the Rust port (handover §10a).

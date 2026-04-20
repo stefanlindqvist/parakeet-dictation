@@ -1,0 +1,1 @@
+List all containers managed by qBittorrent and Gluetun, and show their CIDR subnet assignments.

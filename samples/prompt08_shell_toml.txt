@@ -1,0 +1,1 @@
+From the NAS, copy the TOML config into the Rust project and retry the build on the Blackwell GPU.

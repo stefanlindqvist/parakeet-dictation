@@ -1,0 +1,1 @@
+Hi team, the Anthropic API outage yesterday affected our Claude Code integration for about forty minutes. I've added a retry with exponential backoff; let me know if you hit any regressions.

@@ -1,0 +1,1 @@
+i want to scaffold a new project at D:\ClaudeProjects\Dictation. a sole md file occupies the folder and it is is a handover doc from an ideation session. it will be a simple project style.

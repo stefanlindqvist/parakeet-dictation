@@ -1,0 +1,1 @@
+Add a unit test for the fixup engine that covers CIDR, JSON, YAML, and LLM acronyms when they appear mid-sentence.

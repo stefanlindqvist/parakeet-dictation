@@ -1,0 +1,1 @@
+Kill the Ollama service, clear the model cache, then restart it bound to localhost only.

@@ -104,14 +104,29 @@ class ParakeetAsr:
                     pass
 
     def warmup(self) -> None:
-        """Feed ~1 s of silence through the session to prime kernels."""
+        """Prime encoder + decoder sessions so the first real inference isn't cold.
+
+        Silence under-primes the TDT decoder: its blank-frame short-circuit
+        means few decoder iterations run, and the first real clip still pays
+        ~1 s of kernel-init overhead (observed on DirectML + RTX 5080). Feed a
+        2 s band-limited noise burst instead so the decoder executes its
+        per-frame loop at least once, and run the pass twice to amortise any
+        lazy ONNX Runtime allocator warmup.
+        """
         if self._model is None:
             raise RuntimeError("ParakeetAsr.warmup called before load()")
-        silence = np.zeros(16000, dtype=np.float32)
-        try:
-            self._model.recognize(silence)
-        except Exception as exc:
-            log.warning("Warmup transcribe failed: %s", exc)
+        rng = np.random.default_rng(0)
+        t = np.arange(32000) / 16000.0
+        # Hann envelope keeps the signal below clipping and gives speech-like
+        # onset/offset dynamics without any real content.
+        envelope = 0.5 * (1.0 - np.cos(2 * np.pi * t / t[-1]))
+        audio = (rng.standard_normal(32000).astype(np.float32) * 0.05 * envelope).astype(np.float32)
+        for _ in range(2):
+            try:
+                self._model.recognize(audio)
+            except Exception as exc:
+                log.warning("Warmup transcribe failed: %s", exc)
+                break
 
     def transcribe(self, audio: bytes) -> str:
         """Transcribe PCM16 16 kHz mono audio to text."""

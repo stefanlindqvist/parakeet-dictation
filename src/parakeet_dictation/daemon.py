@@ -50,6 +50,7 @@ class _Daemon:
         self.asr.load()
         log.info("Warming up…")
         self.asr.warmup()
+        self.vad.warmup()
         log.info("Ready. Hotkey=%s mode=%s", self.config.hotkey.key, self.config.hotkey.mode)
 
         self._start_hotkey_listener()

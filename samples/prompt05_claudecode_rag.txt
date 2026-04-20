@@ -1,0 +1,1 @@
+Wire up the Ollama local endpoint to a RAG pipeline that reads from the DSM shared folder on my Synology NAS.

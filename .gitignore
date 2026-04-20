@@ -25,6 +25,10 @@ models/parakeet-tdt-0.6b-v3/
 parakeet-dictation.log
 *.log
 
+# Bench / accuracy corpus — WAVs are big and user-specific, keep only the .txt references
+samples/*.wav
+samples/accuracy*.md
+
 # Editor / IDE
 .vscode/
 .idea/

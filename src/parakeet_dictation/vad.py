@@ -36,6 +36,25 @@ class SileroVad:
             self._model = load_silero_vad(onnx=True)
         return self._model
 
+    def warmup(self) -> None:
+        """Load the Silero ONNX session and run one window so the first real
+        ``trim`` call isn't cold. Cheap (tiny model, CPU) and avoids the
+        ~700 ms hit on the first real dictation after startup.
+        """
+        if not self._config.enabled:
+            return
+        import torch  # type: ignore[import-not-found]
+
+        model = self._ensure_model()
+        self._reset()
+        chunk = np.zeros(_WINDOW, dtype=np.float32)
+        tensor = torch.from_numpy(chunk)
+        try:
+            with torch.no_grad():
+                model(tensor, _SAMPLE_RATE)
+        except Exception as exc:
+            log.warning("VAD warmup failed: %s", exc)
+
     def _reset(self) -> None:
         model = self._model
         if model is not None and hasattr(model, "reset_states"):

@@ -1,0 +1,1 @@
+Kan du hjälpa mig att sätta upp en lokal RAG pipeline mot mina anteckningar i Obsidian, med Ollama som backend och Qdrant som vektordatabas?

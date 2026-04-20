@@ -1,0 +1,1 @@
+Refactor the MCP handler in paste.py to use SendInput instead of keybd_event, and make sure clipboard restore still works in VS Code.

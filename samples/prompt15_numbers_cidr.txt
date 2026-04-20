@@ -1,0 +1,1 @@
+The IP block is ten dot zero dot sixteen dot zero slash twenty, and the VLAN ID is four hundred and ninety two. The port range is five thousand through five thousand one hundred.

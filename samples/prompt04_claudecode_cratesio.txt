@@ -1,0 +1,1 @@
+Check if crates.io has a Rust binding for the Windows SendInput API, and if not, suggest the smallest crate that wraps the Win32 input queue.

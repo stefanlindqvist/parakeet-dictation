@@ -1,0 +1,1 @@
+Install the Dependabot workflow for the fitnesscoach repo, then configure pgvector with Qdrant as a secondary store.
