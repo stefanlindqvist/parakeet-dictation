@@ -11,7 +11,7 @@ Canonical design: [parakeet-dictation-handover.md](parakeet-dictation-handover.m
 ## Tech Stack
 
 - **Runtime**: Python 3.11 or 3.12 (not 3.13)
-- **ASR model**: Parakeet-TDT 0.6B v3 (ONNX int8) from `onnx-community/parakeet-tdt-0.6b-v3-ONNX`
+- **ASR model**: Parakeet-TDT 0.6B v3 (ONNX int8) from `istupakov/parakeet-tdt-0.6b-v3-onnx` (the `onnx-community/...` path cited in the handover does not exist; use this mirror, same author as `onnx-asr`)
 - **Inference**: `onnx-asr` + `onnxruntime-directml` (encoder on `DmlExecutionProvider`, decoder on `CPUExecutionProvider`)
 - **VAD**: `silero-vad` (ONNX, CPU)
 - **Audio**: `sounddevice` (16 kHz mono PCM)
@@ -32,7 +32,7 @@ python -m parakeet_dictation
 # Run tests
 pytest tests/ -v
 
-# Download ONNX models (one-time, ~900 MB)
+# Download ONNX models (one-time, ~670 MB int8)
 pwsh scripts/download_models.ps1
 ```
 

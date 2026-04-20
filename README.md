@@ -20,7 +20,7 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -e .[dev]
 
-# 2. Download Parakeet ONNX models (~900 MB int8)
+# 2. Download Parakeet ONNX models (~670 MB int8)
 pwsh scripts/download_models.ps1
 
 # 3. Review / edit config.toml (hotkey, audio device, language)

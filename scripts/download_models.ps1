@@ -15,6 +15,11 @@
     Uses Invoke-WebRequest (built into Windows PowerShell 5.1+) so this script
     runs on a stock Windows 11 install with no external dependencies.
     Canonical design: ../parakeet-dictation-handover.md §4 + §8e.
+    Repo note: the handover cited `onnx-community/parakeet-tdt-0.6b-v3-ONNX`
+    which does not exist publicly. The real ONNX mirror (same author as the
+    onnx-asr library) is `istupakov/parakeet-tdt-0.6b-v3-onnx`; files live at
+    the repo root, not under an `onnx/` subdirectory, and the int8 encoder
+    has no `.data` sidecar (only the fp32 version does).
 #>
 
 [CmdletBinding()]
@@ -24,14 +29,17 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$BaseUrl = "https://huggingface.co/onnx-community/parakeet-tdt-0.6b-v3-ONNX/resolve/main"
+$BaseUrl = "https://huggingface.co/istupakov/parakeet-tdt-0.6b-v3-onnx/resolve/main"
 
-# Files to download. Paths are relative to $BaseUrl.
+# Files to download. Paths are relative to $BaseUrl. Total ~670 MB for int8.
+# nemo128.onnx is the mel-filterbank preprocessor; config.json carries model
+# metadata. Both are required alongside the encoder/decoder + vocab.
 $Files = @(
-    @{ RemotePath = "onnx/encoder-model.int8.onnx";       LocalName = "encoder-model.int8.onnx" },
-    @{ RemotePath = "onnx/encoder-model.int8.onnx.data";  LocalName = "encoder-model.int8.onnx.data" },
-    @{ RemotePath = "onnx/decoder_joint-model.int8.onnx"; LocalName = "decoder_joint-model.int8.onnx" },
-    @{ RemotePath = "vocab.txt";                          LocalName = "vocab.txt" }
+    @{ RemotePath = "encoder-model.int8.onnx";       LocalName = "encoder-model.int8.onnx" },
+    @{ RemotePath = "decoder_joint-model.int8.onnx"; LocalName = "decoder_joint-model.int8.onnx" },
+    @{ RemotePath = "nemo128.onnx";                  LocalName = "nemo128.onnx" },
+    @{ RemotePath = "vocab.txt";                     LocalName = "vocab.txt" },
+    @{ RemotePath = "config.json";                   LocalName = "config.json" }
 )
 
 # After first successful run, paste captured checksums here (keys = LocalName).
