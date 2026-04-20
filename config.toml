@@ -1,0 +1,32 @@
+[hotkey]
+# Toggle mode: tap to start, tap to stop
+# Hold mode: hold to record, release to transcribe
+mode = "hold"                      # "hold" | "toggle"
+key = "<cmd>+`"                    # pynput notation
+
+[audio]
+sample_rate = 16000
+device_index = -1                  # -1 = default input device
+# Silence detection — VAD terminates recording after this many ms of silence
+# in toggle mode. Ignored in hold mode.
+silence_timeout_ms = 1200
+
+[vad]
+enabled = true
+threshold = 0.5                    # Silero confidence threshold
+min_speech_ms = 200                # Ignore bursts shorter than this
+
+[asr]
+model_path = "./models/parakeet-tdt-0.6b-v3"
+language = "auto"                  # "auto" | "en" | "sv" | ...
+encoder_provider = "DmlExecutionProvider"
+decoder_provider = "CPUExecutionProvider"
+
+[paste]
+# Restore clipboard after paste so we don't clobber what the user had
+restore_clipboard = true
+restore_delay_ms = 500
+
+[logging]
+level = "INFO"
+file = "./parakeet-dictation.log"
