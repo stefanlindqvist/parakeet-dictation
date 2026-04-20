@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import tomllib
 from pathlib import Path
+from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 
 class HotkeyConfig(BaseModel):
-    mode: str = "hold"  # "hold" | "toggle"
+    mode: Literal["hold", "toggle"] = "hold"
     key: str = "<cmd>+`"
 
 
@@ -50,11 +52,21 @@ class AppConfig(BaseModel):
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
 
 
-def load_config(path: Path | str = Path("config.toml")) -> AppConfig:
-    """Parse ``config.toml`` from disk into an :class:`AppConfig`.
+class ConfigError(RuntimeError):
+    """Raised when ``config.toml`` is missing or malformed."""
 
-    Implement per handover §11 step 3: use ``tomllib`` (stdlib, 3.11+) to parse,
-    then validate against :class:`AppConfig`. Raise a clear error if the file is
-    missing or if a required table is malformed.
-    """
-    raise NotImplementedError("Implement per handover §11 step 3.")
+
+def load_config(path: Path | str = Path("config.toml")) -> AppConfig:
+    """Parse ``config.toml`` from disk into an :class:`AppConfig`."""
+    path = Path(path)
+    if not path.is_file():
+        raise ConfigError(f"Config file not found: {path}")
+    try:
+        with path.open("rb") as fh:
+            raw = tomllib.load(fh)
+    except tomllib.TOMLDecodeError as exc:
+        raise ConfigError(f"Invalid TOML in {path}: {exc}") from exc
+    try:
+        return AppConfig.model_validate(raw)
+    except ValidationError as exc:
+        raise ConfigError(f"Invalid config in {path}:\n{exc}") from exc
