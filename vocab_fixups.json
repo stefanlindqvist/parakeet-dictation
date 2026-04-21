@@ -81,6 +81,10 @@
     { "pattern": "\\bd\\s+column\\s+slash\\b",                 "replacement": "D:\\\\" },
     { "pattern": "\\s+\\bslash\\b\\s+",                        "replacement": "/" },
     { "pattern": "\\s+\\bunderscore\\b\\s+",                   "replacement": "_" },
-    { "pattern": "\\s+\\bdash\\b\\s+",                         "replacement": "-" }
+    { "pattern": "\\s+\\bdash\\b\\s+",                         "replacement": "-" },
+
+    { "pattern": ",?\\s+\\b(?:uh|uhm|um|erm|ehm|eh|öh|äh)\\b",          "replacement": "" },
+    { "pattern": "^\\s*\\b(?:uh|uhm|um|erm|ehm|eh|öh|äh)\\b[,.]?\\s*",  "replacement": "" },
+    { "pattern": "\\s{2,}",                                             "replacement": " " }
   ]
 }

@@ -63,3 +63,34 @@ def test_fixups_non_string_entries_raise(tmp_path: Path) -> None:
     )
     with pytest.raises(ValueError, match="must be strings"):
         FixupEngine(bad)
+
+
+def test_fixups_remove_uh_mid_sentence() -> None:
+    engine = FixupEngine(VOCAB_FIXUPS)
+    assert engine.apply("well uh okay") == "well okay"
+
+
+def test_fixups_remove_um_with_comma() -> None:
+    engine = FixupEngine(VOCAB_FIXUPS)
+    assert engine.apply("well, um, okay") == "well, okay"
+
+
+def test_fixups_remove_leading_uh() -> None:
+    engine = FixupEngine(VOCAB_FIXUPS)
+    assert engine.apply("Uh, yes.") == "yes."
+
+
+def test_fixups_preserve_uh_inside_words() -> None:
+    engine = FixupEngine(VOCAB_FIXUPS)
+    assert engine.apply("authentic human umbrella") == "authentic human umbrella"
+
+
+def test_fixups_filler_case_insensitive() -> None:
+    engine = FixupEngine(VOCAB_FIXUPS)
+    assert engine.apply("well Um okay") == "well okay"
+    assert engine.apply("well UH okay") == "well okay"
+
+
+def test_fixups_remove_swedish_filler() -> None:
+    engine = FixupEngine(VOCAB_FIXUPS)
+    assert engine.apply("jag öh tänker") == "jag tänker"
