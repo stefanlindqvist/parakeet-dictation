@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Any
 
 from .asr import ParakeetAsr
 from .audio import MicCapture
+from .events import EventLogger
 from .fixups import FixupEngine
 from .paste import paste_to_active_window
 from .vad import SileroVad
@@ -35,6 +36,7 @@ class _Daemon:
         self.vad = SileroVad(config.vad)
         self.asr = ParakeetAsr(config.asr)
         self.fixups = FixupEngine(Path("vocab_fixups.json"))
+        self.events = EventLogger(config.corpus)
         self._listener: Any | None = None
         self._stop_event: asyncio.Event | None = None
         # hold mode: pressed True while key is held.
@@ -184,7 +186,7 @@ class _Daemon:
                 return
             t_asr = time.perf_counter()
 
-            final = self.fixups.apply(raw_text)
+            final, fixup_hits = self.fixups.apply_with_hits(raw_text)
             t_fix = time.perf_counter()
 
             if not final.strip():
@@ -203,16 +205,33 @@ class _Daemon:
                 return
             t_paste = time.perf_counter()
 
+            stages_ms = {
+                "record_ms": (t_record - t0) * 1000,
+                "vad_ms": (t_vad - t_record) * 1000,
+                "asr_ms": (t_asr - t_vad) * 1000,
+                "fixup_ms": (t_fix - t_asr) * 1000,
+                "paste_ms": (t_paste - t_fix) * 1000,
+            }
+            audio_ms = int(len(trimmed) / 2 / 16)  # 16 kHz int16 mono
+
             log.info(
-                "Transcribed %d chars in %.0f ms (rec=%.0f vad=%.0f asr=%.0f fixup=%.1f paste=%.0f): %s",
+                "Transcribed %d chars in %.0f ms (rec=%.0f vad=%.0f asr=%.0f fixup=%.1f paste=%.0f hits=%d): %s",
                 len(final),
                 (t_paste - t0) * 1000,
-                (t_record - t0) * 1000,
-                (t_vad - t_record) * 1000,
-                (t_asr - t_vad) * 1000,
-                (t_fix - t_asr) * 1000,
-                (t_paste - t_fix) * 1000,
+                stages_ms["record_ms"],
+                stages_ms["vad_ms"],
+                stages_ms["asr_ms"],
+                stages_ms["fixup_ms"],
+                stages_ms["paste_ms"],
+                fixup_hits,
                 final,
+            )
+            self.events.log_dictation(
+                raw=raw_text,
+                fixed=final,
+                audio_ms=audio_ms,
+                stages=stages_ms,
+                fixup_hits=fixup_hits,
             )
 
 

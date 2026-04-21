@@ -29,7 +29,11 @@ pwsh scripts/download_models.ps1
 python -m parakeet_dictation
 ```
 
-Default hotkey is `Win+`` ` `` (configurable in [config.toml](config.toml)). Hold to record, release to transcribe-and-paste. Startup logs `Ready. Hotkey=<cmd>+` …` once the ASR model has loaded and warmed up — only start dictating after that line.
+Default hotkey is **`Ctrl+Shift+Space`** (configurable in [config.toml](config.toml)). Hold to record, release to transcribe-and-paste. Startup logs `Ready. Hotkey=<ctrl>+<shift>+<space> …` once the ASR model has loaded and warmed up — only start dictating after that line.
+
+Hotkeys to avoid on Windows 11 / Swedish layouts:
+- **`Win+`` ` ``** — Windows Terminal's quake-mode shortcut grabs it at the OS level; pynput never sees the keystroke.
+- **`Ctrl+Alt+X`** — on European (Swedish/German/…) layouts, `AltGr` sends `Ctrl+Alt` at the scan-code level, which would false-trigger on every AltGr shortcut.
 
 ## First-run smoke test
 
@@ -46,7 +50,7 @@ All runtime tuning lives in [config.toml](config.toml). Keys mirror [AppConfig](
 | Section    | Key                    | Meaning                                                                                     |
 |------------|------------------------|---------------------------------------------------------------------------------------------|
 | `hotkey`   | `mode`                 | `hold` (record while held) or `toggle` (tap to start, tap to stop).                         |
-| `hotkey`   | `key`                  | pynput chord notation, e.g. `<cmd>+` `` ` ``, `<ctrl>+<alt>+d`.                             |
+| `hotkey`   | `key`                  | pynput chord notation, e.g. `<ctrl>+<shift>+<space>`, `<cmd>+<f9>`. See warnings above.     |
 | `audio`    | `sample_rate`          | Fixed at `16000` for Parakeet. Do not change.                                               |
 | `audio`    | `device_index`         | `-1` = default input. Use `python -m sounddevice` to list device indices.                   |
 | `audio`    | `silence_timeout_ms`   | Toggle mode only: auto-stop after this much silence. Ignored in hold mode.                  |
@@ -71,7 +75,7 @@ Technical-vocabulary fixups — ordered regex substitutions applied post-transcr
 ```
 ┌──────────────────┐      ┌──────────────────┐      ┌──────────────────┐
 │  Global hotkey   │ ───► │  Mic capture     │ ───► │  Silero VAD      │
-│  (Win+`)         │      │  16 kHz mono     │      │  (trim silence)  │
+│  (Ctrl+Shift+Spc)│      │  16 kHz mono     │      │  (trim silence)  │
 └──────────────────┘      └──────────────────┘      └────────┬─────────┘
                                                              │
                                                              ▼
@@ -94,6 +98,33 @@ Each transcription emits a single log line with a latency breakdown (`rec / vad 
 - **`onnxruntime` conflict.** If you ever see `CUDAExecutionProvider` offered but DirectML missing, you've got a second `onnxruntime-*` wheel installed. `pip uninstall onnxruntime onnxruntime-gpu` and reinstall `onnxruntime-directml`.
 - **Model files missing.** The daemon fails loudly with `ASR model path does not exist …`. Run `pwsh scripts/download_models.ps1` once and retry.
 - **Git Bash `ssh`/`scp` from PowerShell.** When pushing from Claude Code, the Git-bundled `ssh.exe` can't talk to the Windows ssh-agent named pipe. Prepend `C:\Windows\System32\OpenSSH` to `PATH` in PowerShell, or invoke the native `ssh.exe` by full path. Global note in `~/.claude/CLAUDE.md`.
+
+## Training data / correction mining
+
+The daemon appends a JSONL record to `training_data/events.jsonl` after every successful paste, and a companion hook (`scripts/claude_hook.py`) appends a record for every prompt you submit to Claude Code. Later, a correlator script can pair the two by time + similarity and surface "dictation X became submission Y" — that's the raw signal for growing [vocab_fixups.json](vocab_fixups.json).
+
+The `training_data/` folder is `.gitignore`d (transcripts are user-specific and potentially sensitive). Disable logging entirely by setting `corpus.enabled = false` in [config.toml](config.toml).
+
+**Wire the Claude Code hook once**, in `%USERPROFILE%\.claude\settings.json` (global — fires across every project):
+
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python D:\\ClaudeProjects\\Dictation\\scripts\\claude_hook.py D:\\ClaudeProjects\\Dictation\\training_data\\events.jsonl"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+The hook uses stdlib only, never blocks your prompt (any failure exits 0 + stderr log), and stays silent on stdout so Claude's prompt context isn't polluted. Record schema is documented in [src/parakeet_dictation/events.py](src/parakeet_dictation/events.py).
 
 ## Benchmarks
 

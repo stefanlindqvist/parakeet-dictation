@@ -2,7 +2,10 @@
 # Toggle mode: tap to start, tap to stop
 # Hold mode: hold to record, release to transcribe
 mode = "hold"                      # "hold" | "toggle"
-key = "<cmd>+`"                    # pynput notation
+# pynput notation. Avoid <cmd>+` — Windows Terminal quake mode grabs it
+# globally. Also avoid <ctrl>+<alt>+X on Swedish layouts: AltGr sends
+# Ctrl+Alt at the scan-code level and would false-trigger.
+key = "<ctrl>+<shift>+<space>"
 
 [audio]
 sample_rate = 16000
@@ -30,3 +33,11 @@ restore_delay_ms = 500
 [logging]
 level = "INFO"
 file = "./parakeet-dictation.log"
+
+[corpus]
+# Structured JSONL log of every transcription. Pairs with the Claude Code
+# UserPromptSubmit hook (scripts/claude_hook.py) to build a (raw, final)
+# corpus for iterating on vocab_fixups.json. Disable if you'd rather not
+# keep transcripts on disk.
+enabled = true
+events_file = "./training_data/events.jsonl"

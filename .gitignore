@@ -29,6 +29,9 @@ parakeet-dictation.log
 samples/*.wav
 samples/accuracy*.md
 
+# Dictation event log + future correction-mining outputs (user-specific, potentially sensitive)
+training_data/
+
 # Editor / IDE
 .vscode/
 .idea/

@@ -43,6 +43,15 @@ class LoggingConfig(BaseModel):
     file: str = "./parakeet-dictation.log"
 
 
+class CorpusConfig(BaseModel):
+    """Structured JSONL event log. Paired with Claude Code's UserPromptSubmit
+    hook to mine (raw transcript, final submitted prompt) pairs for fixups.
+    See handover §10 / README 'Training data'."""
+
+    enabled: bool = True
+    events_file: str = "./training_data/events.jsonl"
+
+
 class AppConfig(BaseModel):
     hotkey: HotkeyConfig = Field(default_factory=HotkeyConfig)
     audio: AudioConfig = Field(default_factory=AudioConfig)
@@ -50,6 +59,7 @@ class AppConfig(BaseModel):
     asr: AsrConfig = Field(default_factory=AsrConfig)
     paste: PasteConfig = Field(default_factory=PasteConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
+    corpus: CorpusConfig = Field(default_factory=CorpusConfig)
 
 
 class ConfigError(RuntimeError):

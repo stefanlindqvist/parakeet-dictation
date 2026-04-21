@@ -48,3 +48,15 @@ class FixupEngine:
         for pattern, replacement in self._rules:
             text = pattern.sub(replacement, text)
         return text
+
+    def apply_with_hits(self, text: str) -> tuple[str, int]:
+        """Like :meth:`apply` but also returns how many substitutions fired.
+
+        Used by the event log so we can grep later for dictations where fixups
+        never fired (candidate new patterns) vs fired a lot (already handled).
+        """
+        total = 0
+        for pattern, replacement in self._rules:
+            text, n = pattern.subn(replacement, text)
+            total += n
+        return text, total
