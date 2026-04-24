@@ -13,6 +13,7 @@ Examples
     python scripts/inspect_events.py --kind submit
     python scripts/inspect_events.py --grep Dependabot
     python scripts/inspect_events.py --pairs       # align dictation → submit by time
+    python scripts/inspect_events.py --by-submit   # group dictations under the submit that followed
     python scripts/inspect_events.py --stats       # counts, mean latencies, top fixup terms
 
 Does not mutate the log. Safe to run while the daemon is active.
@@ -145,6 +146,77 @@ def _cmd_pairs(records: list[dict], args: argparse.Namespace) -> None:
             print(f"    submit: <no submit within {window_sec}s>")
 
 
+def _is_user_submit(rec: dict) -> bool:
+    """True if the submit looks like a user-authored prompt.
+
+    The Claude Code hook also emits ``<ide_opened_file>`` / ``<task-notification>``
+    / etc. payloads. Those aren't prompts the user typed — they're tool/IDE
+    signals — so we skip them when grouping dictations under a submit.
+    """
+    prompt = (rec.get("prompt") or "").lstrip()
+    return bool(prompt) and not prompt.startswith("<")
+
+
+def _cmd_by_submit(records: list[dict], args: argparse.Namespace) -> None:
+    """Group dictations by the user submit that consumed them.
+
+    For each user submit, list every dictation that happened since the
+    previous user submit. Captures the 'dictate → think → dictate more →
+    submit' workflow where one prompt is built from several takes — no
+    time window, so long pauses between dictations don't split the group.
+    """
+    by_ts = sorted(records, key=lambda r: r.get("ts", ""))
+    pending: list[dict] = []
+    groups: list[tuple[dict | None, list[dict]]] = []
+    for rec in by_ts:
+        kind = rec.get("kind")
+        if kind == "dictation":
+            pending.append(rec)
+        elif kind == "submit" and _is_user_submit(rec):
+            groups.append((rec, pending))
+            pending = []
+    if pending:
+        groups.append((None, pending))
+
+    groups = [g for g in groups if g[1]]
+
+    if args.grep:
+        needle = args.grep.lower()
+
+        def _matches(group: tuple[dict | None, list[dict]]) -> bool:
+            submit, dicts = group
+            if submit and needle in (submit.get("prompt") or "").lower():
+                return True
+            return any(
+                needle in str(d.get(field, "")).lower()
+                for d in dicts
+                for field in ("raw", "fixed")
+            )
+
+        groups = [g for g in groups if _matches(g)]
+
+    for submit, dicts in groups[-args.tail :]:
+        if submit is None:
+            print("[pending — dictations with no submit yet]")
+        else:
+            ts = _fmt_ts(submit.get("ts", ""))
+            cwd = submit.get("cwd") or "?"
+            count = len(dicts)
+            noun = "dictation" if count == 1 else "dictations"
+            print(f"[{ts}] SUBMIT cwd={cwd}  ({count} {noun})")
+            prompt = (submit.get("prompt") or "").strip()
+            print(f"    submit: {prompt}")
+        for d in dicts:
+            d_ts = _fmt_ts(d.get("ts", ""))
+            raw = _truncate(d.get("raw", ""), 140)
+            print(f"    [{d_ts}]")
+            print(f"      raw  : {raw}")
+            if d.get("fixed") != d.get("raw"):
+                fixed = _truncate(d.get("fixed", ""), 140)
+                print(f"      fixed: {fixed}")
+        print()
+
+
 def _cmd_stats(records: list[dict]) -> None:
     dicts = [r for r in records if r.get("kind") == "dictation"]
     submits = [r for r in records if r.get("kind") == "submit"]
@@ -200,6 +272,12 @@ def main() -> int:
         default=60.0,
         help="Pairing window in seconds (default: 60).",
     )
+    parser.add_argument(
+        "--by-submit",
+        dest="by_submit",
+        action="store_true",
+        help="Group all dictations between consecutive user submits under their submit.",
+    )
     parser.add_argument("--stats", action="store_true", help="Print counts and mean latencies, no records.")
     args = parser.parse_args()
 
@@ -210,6 +288,9 @@ def main() -> int:
 
     if args.stats:
         _cmd_stats(records)
+        return 0
+    if args.by_submit:
+        _cmd_by_submit(records, args)
         return 0
     if args.pairs:
         _cmd_pairs(records, args)

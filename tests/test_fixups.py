@@ -94,3 +94,10 @@ def test_fixups_filler_case_insensitive() -> None:
 def test_fixups_remove_swedish_filler() -> None:
     engine = FixupEngine(VOCAB_FIXUPS)
     assert engine.apply("jag öh tänker") == "jag tänker"
+
+
+def test_fixups_uptime_kuma_variants() -> None:
+    engine = FixupEngine(VOCAB_FIXUPS)
+    assert engine.apply("Dir created on NAS up time Kuma.") == "Dir created on NAS Uptime Kuma."
+    assert engine.apply("For uptime Kuma, configure it.") == "For Uptime Kuma, configure it."
+    assert engine.apply("UPTIME KUMA dashboard") == "Uptime Kuma dashboard"

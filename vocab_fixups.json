@@ -72,6 +72,7 @@
     { "pattern": "\\bpaste dot py\\b",                        "replacement": "paste.py" },
     { "pattern": "\\bclickboard\\b",                          "replacement": "clipboard" },
     { "pattern": "\\bfitness coach\\b",                       "replacement": "fitnesscoach" },
+    { "pattern": "\\bup ?time\\s+kuma\\b",                    "replacement": "Uptime Kuma" },
 
     { "pattern": "\\s*\\bfull stop\\b\\.?",                    "replacement": "." },
     { "pattern": "\\s*,\\s*\\bcomma\\b",                       "replacement": "," },

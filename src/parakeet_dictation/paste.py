@@ -6,17 +6,22 @@ Why pywin32 over pyautogui/keyboard:
   where pyautogui sometimes fails.
 
 Clipboard restore: snapshot current contents, set new text, send ``Ctrl+V``,
-sleep ``restore_delay_ms``, restore original clipboard.
+then schedule a background restore after ``restore_delay_ms`` so the caller
+returns immediately. Consecutive pastes cancel any still-pending restore to
+avoid clobbering the clipboard with a stale value.
 """
 
 from __future__ import annotations
 
 import ctypes
 import logging
-import time
+import threading
 from ctypes import wintypes
 
 log = logging.getLogger(__name__)
+
+_restore_lock = threading.Lock()
+_restore_cancel: threading.Event | None = None
 
 # Virtual-key codes (Windows SDK: WinUser.h)
 _VK_CONTROL = 0x11
@@ -123,13 +128,44 @@ def _set_unicode_clipboard(text: str) -> None:
         win32clipboard.CloseClipboard()
 
 
+def _schedule_restore(previous: str, delay_ms: int) -> None:
+    """Restore ``previous`` to the clipboard after ``delay_ms`` on a background
+    thread. Cancels any still-pending restore from an earlier paste so that
+    back-to-back dictations don't resurrect a stale clipboard value."""
+    global _restore_cancel
+
+    cancel = threading.Event()
+    with _restore_lock:
+        if _restore_cancel is not None:
+            _restore_cancel.set()
+        _restore_cancel = cancel
+
+    def _run() -> None:
+        global _restore_cancel
+        if cancel.wait(delay_ms / 1000.0):
+            return
+        try:
+            _set_unicode_clipboard(previous)
+        except Exception as exc:
+            log.warning("Clipboard restore failed: %s", exc)
+        with _restore_lock:
+            if _restore_cancel is cancel:
+                _restore_cancel = None
+
+    threading.Thread(target=_run, daemon=True).start()
+
+
 def paste_to_active_window(
     text: str,
     *,
     restore_clipboard: bool = True,
-    restore_delay_ms: int = 500,
+    restore_delay_ms: int = 150,
 ) -> None:
-    """Copy ``text`` to the clipboard and simulate ``Ctrl+V`` in the active window."""
+    """Copy ``text`` to the clipboard and simulate ``Ctrl+V`` in the active window.
+
+    Returns as soon as ``Ctrl+V`` has been dispatched; the clipboard restore
+    (if requested) runs asynchronously after ``restore_delay_ms``.
+    """
     if not text:
         return
 
@@ -145,8 +181,4 @@ def paste_to_active_window(
     _send_ctrl_v()
 
     if restore_clipboard and previous is not None:
-        time.sleep(restore_delay_ms / 1000.0)
-        try:
-            _set_unicode_clipboard(previous)
-        except Exception as exc:
-            log.warning("Clipboard restore failed: %s", exc)
+        _schedule_restore(previous, restore_delay_ms)
