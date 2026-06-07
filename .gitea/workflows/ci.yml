@@ -15,11 +15,8 @@ jobs:
       GIT_SSL_NO_VERIFY: "true"
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: pip install -e .[dev]
-      - run: pytest tests/ -v
+      - run: python3 -m pip install -e .[dev]
+      - run: python3 -m pytest tests/ -v
 
   security-audit:
     runs-on: dictation
@@ -27,8 +24,5 @@ jobs:
       GIT_SSL_NO_VERIFY: "true"
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: pip install pip-audit
+      - run: python3 -m pip install pip-audit
       - run: pip-audit -r pyproject.toml --skip-editable
