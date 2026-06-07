@@ -36,3 +36,5 @@ training_data/
 .vscode/
 .idea/
 *.swp
+
+# ci test trigger
