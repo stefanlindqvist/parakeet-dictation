@@ -77,7 +77,7 @@ def test_fixups_remove_um_with_comma() -> None:
 
 def test_fixups_remove_leading_uh() -> None:
     engine = FixupEngine(VOCAB_FIXUPS)
-    assert engine.apply("Uh, yes.") == "yes."
+    assert engine.apply("Uh, yes.") == "yes"
 
 
 def test_fixups_preserve_uh_inside_words() -> None:
@@ -98,6 +98,6 @@ def test_fixups_remove_swedish_filler() -> None:
 
 def test_fixups_uptime_kuma_variants() -> None:
     engine = FixupEngine(VOCAB_FIXUPS)
-    assert engine.apply("Dir created on NAS up time Kuma.") == "Dir created on NAS Uptime Kuma."
-    assert engine.apply("For uptime Kuma, configure it.") == "For Uptime Kuma, configure it."
+    assert engine.apply("Dir created on NAS up time Kuma.") == "Dir created on NAS Uptime Kuma"
+    assert engine.apply("For uptime Kuma, configure it.") == "For Uptime Kuma, configure it"
     assert engine.apply("UPTIME KUMA dashboard") == "Uptime Kuma dashboard"

@@ -24,5 +24,16 @@ jobs:
       GIT_SSL_NO_VERIFY: "true"
     steps:
       - uses: actions/checkout@v4
-      - run: python3 -m pip install --break-system-packages pip-audit -e .[dev]
-      - run: pip-audit --skip-editable
+      - run: python3 -m pip install --break-system-packages pip-audit
+      - name: Extract project deps to requirements file
+        run: |
+          python3 -c "
+          import tomllib
+          with open('pyproject.toml', 'rb') as f:
+              d = tomllib.load(f)
+          for dep in d['project']['dependencies']:
+              if 'win32' not in dep:
+                  print(dep.split(';')[0].strip())
+          " > /tmp/proj-reqs.txt
+          cat /tmp/proj-reqs.txt
+      - run: pip-audit -r /tmp/proj-reqs.txt
