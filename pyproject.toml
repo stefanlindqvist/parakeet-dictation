@@ -22,7 +22,7 @@ classifiers = [
 
 dependencies = [
     "onnx-asr>=0.3.0",
-    "onnxruntime-directml>=1.19.0",
+    "onnxruntime-directml>=1.19.0; sys_platform == 'win32'",
     "sounddevice>=0.4.7",
     "numpy>=1.26,<2.2",
     "silero-vad>=5.1.2",
