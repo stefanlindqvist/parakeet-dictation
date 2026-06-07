@@ -1,0 +1,27 @@
+services:
+  gitea-runner-dictation:
+    image: gitea/act_runner:latest
+    container_name: gitea-runner-dictation
+    restart: unless-stopped
+    env_file:
+      - /srv/docker/runner-dictation/env
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /srv/docker/runner-dictation/lab-ca.crt:/etc/ssl/certs-extra/lab-ca.crt:ro
+      - /srv/docker/runner-dictation/config.yaml:/etc/act_runner/config.yaml:ro
+      - /srv/docker/runner-dictation/entrypoint.sh:/entrypoint.sh:ro
+      - runner-dictation-data:/data
+    entrypoint: ["/entrypoint.sh"]
+    environment:
+      TZ: Europe/Stockholm
+      GITEA_INSTANCE_URL: "https://gitea.home.lan"
+      GITEA_RUNNER_NAME: ct102-runner-dictation
+      GITEA_RUNNER_LABELS: "self-hosted,ubuntu-latest:docker://catthehacker/ubuntu:act-latest,dictation:docker://catthehacker/ubuntu:act-latest"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  runner-dictation-data:

@@ -1,0 +1,31 @@
+# infra/runner-dictation/config.yaml
+#
+# act_runner configuration for gitea-runner-dictation on CT 102.
+#
+# Deploy to CT 102:
+#   scp infra/runner-dictation/config.yaml root@192.168.1.22:/srv/docker/runner-dictation/config.yaml
+# Then restart the container:
+#   ssh root@192.168.1.22 "docker compose -f /srv/docker/runner-dictation/docker-compose.yml restart"
+
+log:
+  level: info
+
+runner:
+  file: .runner
+  capacity: 2
+  timeout: 3h
+  insecure: false
+  fetch_timeout: 5s
+  fetch_interval: 2s
+
+cache:
+  enabled: false
+
+container:
+  options: "-v /var/run/docker.sock:/var/run/docker.sock"
+  valid_volumes:
+    - /var/run/docker.sock
+  network: ""
+  privileged: false
+  docker_host: ""
+  force_pull: true

@@ -88,3 +88,58 @@ From handover Section 13. **Do not violate these** — past incidents informed t
 
 - Canonical spec: [parakeet-dictation-handover.md](parakeet-dictation-handover.md)
 - Implementation order: handover Section 11 (build `pyproject.toml` → `download_models.ps1` → `config.py` → `asr.py` → `fixups.py` → `paste.py` → `audio.py` → `vad.py` → `daemon.py` → `__main__.py` → `README.md` additions)
+
+
+
+## Gitea
+
+- **Forge:** `https://gitea.home.lan/stefanlindqvist/parakeet-dictation`
+- **SSH remote (origin):** `ssh://git@gitea.home.lan:2222/stefanlindqvist/parakeet-dictation.git`
+- **GitHub mirror (read-only push target):** `https://github.com/stefanlindqvist/parakeet-dictation`
+- **Gitea token:** `~/.gitea_token`
+- **`tea` CLI:** always pass `-l home`; use `tea pr create/list/close`
+
+```powershell
+tea pr list -l home --state open
+tea pr create -l home --head feature/<scope> --base main --title "..." -d "<body>"
+tea pr close <N> -l home
+tea pr view <N> -l home
+```
+
+### Gitea PR merge pattern (Gap 1)
+
+**Never merge via the Gitea web UI merge button or `POST /pulls/{n}/merge` API.**
+Gitea omits `head_repo_id` on same-repo PRs created via API — web/API merge silently no-ops.
+Merge locally and close the PR via API instead:
+
+```bash
+# 1. Record PR number from: tea pr list -l home --state open
+# 2. Checkout main, pull, merge the feature branch
+git checkout main && git pull
+git merge --no-ff feature/<scope>   # message: "Merge pull request '#N' from feature/<scope>"
+git push origin main
+# 3. Close the PR and delete the remote branch
+tea pr close <N> -l home
+git push origin --delete feature/<scope>
+```
+
+All four steps are atomic — do not omit any.
+
+### CI base-branch invariant (Gap 2)
+
+`git diff main... -- .gitea/workflows/` must be empty before opening a PR.
+Land workflow changes on `main` first (direct push, no PR), then branch for feature work.
+
+### Watch CI
+
+```powershell
+$token = Get-Content ~/.gitea_token
+(Invoke-WebRequest -SkipCertificateCheck `
+  -Headers @{ Authorization = "token $token" } `
+  -Uri "https://gitea.home.lan/api/v1/repos/stefanlindqvist/parakeet-dictation/actions/runs?branch=<branch>&limit=5"
+).Content | ConvertFrom-Json |
+  Select-Object -ExpandProperty workflow_runs |
+  Select-Object id, status, conclusion, @{n='sha';e={$_.head_sha.Substring(0,8)}}
+```
+
+All jobs must show `conclusion = success` before merging.
