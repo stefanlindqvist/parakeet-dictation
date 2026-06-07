@@ -22,9 +22,6 @@ cache:
   enabled: false
 
 container:
-  options: "-v /var/run/docker.sock:/var/run/docker.sock"
-  valid_volumes:
-    - /var/run/docker.sock
   network: ""
   privileged: false
   docker_host: ""
