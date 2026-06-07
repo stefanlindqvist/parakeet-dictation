@@ -34,6 +34,7 @@
     { "pattern": "\\bss[dh] ?notif",                          "replacement": "DSM notif" },
     { "pattern": "\\bclaude ?code\\b",                        "replacement": "Claude Code" },
     { "pattern": "\\bcloud code\\b",                          "replacement": "Claude Code" },
+    { "pattern": "\\b(?:cloth|clude|clute)\\b",               "replacement": "Claude" },
     { "pattern": "\\banthropic\\b",                           "replacement": "Anthropic" },
     { "pattern": "\\bgar ?min\\b",                            "replacement": "Garmin" },
     { "pattern": "\\bkarmin\\b",                              "replacement": "Garmin" },
@@ -86,6 +87,7 @@
 
     { "pattern": ",?\\s+\\b(?:uh|uhm|um|erm|ehm|eh|öh|äh)\\b",          "replacement": "" },
     { "pattern": "^\\s*\\b(?:uh|uhm|um|erm|ehm|eh|öh|äh)\\b[,.]?\\s*",  "replacement": "" },
-    { "pattern": "\\s{2,}",                                             "replacement": " " }
+    { "pattern": "\\s{2,}",                                             "replacement": " " },
+    { "pattern": "\\.\\s*$",                                            "replacement": "" }
   ]
 }
