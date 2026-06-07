@@ -15,7 +15,7 @@ jobs:
       GIT_SSL_NO_VERIFY: "true"
     steps:
       - uses: actions/checkout@v4
-      - run: python3 -m pip install -e .[dev]
+      - run: python3 -m pip install --break-system-packages -e .[dev]
       - run: python3 -m pytest tests/ -v
 
   security-audit:
@@ -24,5 +24,5 @@ jobs:
       GIT_SSL_NO_VERIFY: "true"
     steps:
       - uses: actions/checkout@v4
-      - run: python3 -m pip install pip-audit
+      - run: python3 -m pip install --break-system-packages pip-audit
       - run: pip-audit -r pyproject.toml --skip-editable
