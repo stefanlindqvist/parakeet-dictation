@@ -96,15 +96,7 @@ From handover Section 13. **Do not violate these** — past incidents informed t
 - **Forge:** `https://gitea.home.lan/stefanlindqvist/parakeet-dictation`
 - **SSH remote (origin):** `ssh://git@gitea.home.lan:2222/stefanlindqvist/parakeet-dictation.git`
 - **GitHub mirror (read-only push target):** `https://github.com/stefanlindqvist/parakeet-dictation`
-- **Gitea token:** `~/.gitea_token`
-- **`tea` CLI:** always pass `-l home`; use `tea pr create/list/close`
-
-```powershell
-tea pr list -l home --state open
-tea pr create -l home --head feature/<scope> --base main --title "..." -d "<body>"
-tea pr close <N> -l home
-tea pr view <N> -l home
-```
+- Gitea REST recipes: global `~/.claude/CLAUDE.md` § Gitea
 
 ### Gitea PR merge pattern (Gap 1)
 
@@ -113,13 +105,12 @@ Gitea omits `head_repo_id` on same-repo PRs created via API — web/API merge si
 Merge locally and close the PR via API instead:
 
 ```bash
-# 1. Record PR number from: tea pr list -l home --state open
+# 1. Record the PR number (list open PRs via REST, filter head.ref client-side)
 # 2. Checkout main, pull, merge the feature branch
 git checkout main && git pull
 git merge --no-ff feature/<scope>   # message: "Merge pull request '#N' from feature/<scope>"
 git push origin main
-# 3. Close the PR and delete the remote branch
-tea pr close <N> -l home
+# 3. Close the PR via REST (PATCH /issues/<N> state=closed, then re-GET) and delete the remote branch
 git push origin --delete feature/<scope>
 ```
 
@@ -132,14 +123,4 @@ Land workflow changes on `main` first (direct push, no PR), then branch for feat
 
 ### Watch CI
 
-```powershell
-$token = Get-Content ~/.gitea_token
-(Invoke-WebRequest -SkipCertificateCheck `
-  -Headers @{ Authorization = "token $token" } `
-  -Uri "https://gitea.home.lan/api/v1/repos/stefanlindqvist/parakeet-dictation/actions/runs?branch=<branch>&limit=5"
-).Content | ConvertFrom-Json |
-  Select-Object -ExpandProperty workflow_runs |
-  Select-Object id, status, conclusion, @{n='sha';e={$_.head_sha.Substring(0,8)}}
-```
-
-All jobs must show `conclusion = success` before merging.
+Gitea REST recipes: global `~/.claude/CLAUDE.md` § Gitea (filter runs by `head_sha`). All jobs must be `success` before merging.

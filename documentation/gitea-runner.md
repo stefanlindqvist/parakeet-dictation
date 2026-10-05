@@ -50,13 +50,7 @@ $reg = Invoke-RestMethod -SkipCertificateCheck -Method POST `
 
 ## Watch CI runs
 
-```powershell
-$token = (Get-Content 'C:\Users\stefa\.gitea_token' -Raw).Trim()
-(Invoke-RestMethod -SkipCertificateCheck `
-    -Uri "https://gitea.home.lan/api/v1/repos/stefanlindqvist/parakeet-dictation/actions/runs?limit=5" `
-    -Headers @{ Authorization = "token $token" }).workflow_runs |
-    Select-Object id, status, conclusion, head_sha | Format-Table
-```
+Gitea REST recipes: global `~/.claude/CLAUDE.md` § Gitea (filter `/actions/runs` by `head_sha`).
 
 ## CI workflow design notes
 
