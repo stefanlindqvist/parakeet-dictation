@@ -100,9 +100,10 @@ From handover Section 13. **Do not violate these** — past incidents informed t
 
 ### Gitea PR merge pattern (Gap 1)
 
-**Never merge via the Gitea web UI merge button or `POST /pulls/{n}/merge` API.**
-Gitea omits `head_repo_id` on same-repo PRs created via API — web/API merge silently no-ops.
-Merge locally and close the PR via API instead:
+**This project merges locally by choice** (a `--no-ff` merge commit on `main`), then closes the PR via API.
+The API merge (`POST /pulls/{n}/merge`) does work — the old claim that Gitea omits `head_repo_id` and
+silently no-ops did not reproduce (Gitea 1.27.3, probe PR #1, issue #2); the web UI merge button is untested.
+A PR closed after a local merge reads `merged=false` — expected.
 
 ```bash
 # 1. Record the PR number (list open PRs via REST, filter head.ref client-side)
@@ -116,10 +117,12 @@ git push origin --delete feature/<scope>
 
 All four steps are atomic — do not omit any.
 
-### CI base-branch invariant (Gap 2)
+### Workflow changes in PRs (Gap 2)
 
-`git diff main... -- .gitea/workflows/` must be empty before opening a PR.
-Land workflow changes on `main` first (direct push, no PR), then branch for feature work.
+A `pull_request` run loads the workflow files from the **PR head**, not the base branch, and a push to an
+open PR starts a new run on the new head SHA (Gitea 1.27.3, probe PR #3, issue #2). Workflow edits can
+therefore ship in a normal feature PR and are exercised by that PR's own CI — there is no need to land
+them on `main` first.
 
 ### Watch CI
 
