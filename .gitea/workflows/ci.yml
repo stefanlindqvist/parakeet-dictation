@@ -1,8 +1,16 @@
 on:
+  # .claude/** (settings.json, hooks/) is read by neither job, so a change that only
+  # touches it need not run pytest or pip-audit. Safe to skip on pull_request because
+  # main has no branch protection / required checks (GET /branch_protections -> [],
+  # checked 2026-10-11); a required check that never reports would block the merge.
   push:
     branches: [main]
+    paths-ignore:
+      - '.claude/**'
   pull_request:
     branches: [main]
+    paths-ignore:
+      - '.claude/**'
 
 concurrency:
   group: ci-${{ github.ref }}
